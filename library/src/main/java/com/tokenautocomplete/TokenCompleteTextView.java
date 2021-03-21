@@ -55,7 +55,7 @@ import java.util.List;
  *
  * @author mgod
  */
-public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteTextView
+public abstract class TokenCompleteTextView extends AppCompatAutoCompleteTextView
         implements TextView.OnEditorActionListener, ViewSpan.Layout {
     //Logging
     public static final String TAG = "TokenAutoComplete";
@@ -79,8 +79,9 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
     }
 
     private Tokenizer tokenizer;
-    private T selectedObject;
-    private TokenListener<T> listener;
+    private Object selectedObject;
+    private Class objectClass;
+    private TokenListener<Object> listener;
     private TokenSpanWatcher spanWatcher;
     private TokenTextWatcher textWatcher;
     private CountSpan countSpan;
@@ -244,7 +245,7 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
      *
      * @param l The TokenListener
      */
-    public void setTokenListener(TokenListener<T> l) {
+    public void setTokenListener(TokenListener<Object> l) {
         listener = l;
     }
 
@@ -253,7 +254,7 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
      * @param token the token to check
      * @return true if the token should not be added, false if it's ok to add it.
      */
-    public boolean shouldIgnoreToken(@SuppressWarnings("unused") T token) {
+    public boolean shouldIgnoreToken(@SuppressWarnings("unused") Object token) {
         return false;
     }
 
@@ -262,7 +263,7 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
      * @param token the token to check
      * @return false if the token should not be removed, true if it's ok to remove it.
      */
-    public boolean isTokenRemovable(@SuppressWarnings("unused") T token) {
+    public boolean isTokenRemovable(@SuppressWarnings("unused") Object token) {
         return true;
     }
 
@@ -318,8 +319,8 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
      *
      * @return List of tokens
      */
-    public List<T> getObjects() {
-        ArrayList<T>objects = new ArrayList<>();
+    public List<Object> getObjects() {
+        ArrayList<Object>objects = new ArrayList<>();
         Editable text = getText();
         if (hiddenContent != null) {
             text = hiddenContent;
@@ -390,7 +391,7 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
      * @param object the object selected by the user from the list
      * @return a view to display a token in the text field for the object
      */
-    abstract protected View getViewForObject(T object);
+    abstract protected View getViewForObject(Object object);
 
     /**
      * Provides a default completion when the user hits , and there is no item in the completion
@@ -399,7 +400,7 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
      * @param completionText the current text we are completing against
      * @return a best guess for what the user meant to complete or null if you don't want a guess
      */
-    abstract protected T defaultObject(String completionText);
+    abstract protected Object defaultObject(String completionText);
 
     /**
      * Correctly build accessibility string for token contents
@@ -527,7 +528,7 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
      * @param token the token to convert
      * @return the string representation of the token. Defaults to {@link Object#toString()}
      */
-    protected CharSequence tokenToString(T token) {
+    protected CharSequence tokenToString(Object token) {
         return token.toString();
     }
 
@@ -840,11 +841,11 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
     @SuppressWarnings("unchecked cast")
     @Override
     protected CharSequence convertSelectionToString(Object object) {
-        selectedObject = (T) object;
+        selectedObject = (Object) object;
         return "";
     }
 
-    protected TokenImageSpan buildSpanForObject(T obj) {
+    protected TokenImageSpan buildSpanForObject(Object obj) {
         if (obj == null) {
             return null;
         }
@@ -906,7 +907,7 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
      * @param object the object to add to the displayed tokens
      */
     @UiThread
-    public void addObjectSync(T object) {
+    public void addObjectSync(Object object) {
         if (object == null) return;
         if (shouldIgnoreToken(object)) {
             if (listener != null) {
@@ -924,7 +925,7 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
      *
      * @param object the object to add to the displayed tokens
      */
-    public void addObjectAsync(final T object) {
+    public void addObjectAsync(final Object object) {
         post(new Runnable() {
             @Override
             public void run() {
@@ -941,7 +942,7 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
      * @param object object to remove, may be null or not in the view
      */
     @UiThread
-    public void removeObjectSync(T object) {
+    public void removeObjectSync(Object object) {
         //To make sure all the appropriate callbacks happen, we just want to piggyback on the
         //existing code that handles deleting spans when the text changes
         ArrayList<Editable>texts = new ArrayList<>();
@@ -973,7 +974,7 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
      *
      * @param object object to remove, may be null or not in the view
      */
-    public void removeObjectAsync(final T object) {
+    public void removeObjectAsync(final Object object) {
         post(new Runnable() {
             @Override
             public void run() {
@@ -989,7 +990,7 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
         post(new Runnable() {
             @Override
             public void run() {
-                for (T object: getObjects()) {
+                for (Object object: getObjects()) {
                     removeObjectSync(object);
                 }
             }
@@ -1164,16 +1165,16 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
     }
 
     protected class TokenImageSpan extends ViewSpan implements NoCopySpan {
-        private T token;
+        private Object token;
 
         @SuppressWarnings("WeakerAccess")
-        public TokenImageSpan(View d, T token) {
+        public TokenImageSpan(View d, Object token) {
             super(d, TokenCompleteTextView.this);
             this.token = token;
         }
 
         @SuppressWarnings("WeakerAccess")
-        public T getToken() {
+        public Object getToken() {
             return this.token;
         }
 
@@ -1225,7 +1226,7 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
         @SuppressWarnings("unchecked cast")
         @Override
         public void onSpanAdded(Spannable text, Object what, int start, int end) {
-            if (what instanceof TokenCompleteTextView<?>.TokenImageSpan && !savingState) {
+            if (what instanceof TokenCompleteTextView.TokenImageSpan && !savingState) {
                 TokenImageSpan token = (TokenImageSpan) what;
 
                 // If we're not focused: collapse the view if necessary
@@ -1239,7 +1240,7 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
         @SuppressWarnings("unchecked cast")
         @Override
         public void onSpanRemoved(Spannable text, Object what, int start, int end) {
-            if (what instanceof TokenCompleteTextView<?>.TokenImageSpan && !savingState) {
+            if (what instanceof TokenCompleteTextView.TokenImageSpan && !savingState) {
                 TokenImageSpan token = (TokenImageSpan) what;
 
                 if (listener != null)
@@ -1318,8 +1319,8 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
     }
 
     @SuppressWarnings("unchecked")
-    protected List<T> convertSerializableObjectsToTypedObjects(List s) {
-        return (List<T>) s;
+    protected List<Object> convertSerializableObjectsToTypedObjects(List s) {
+        return (List<Object>) s;
     }
 
     //Used to determine if we can use the Parcelable interface
@@ -1337,6 +1338,10 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
         ParameterizedType superclass = (ParameterizedType) viewClass.getGenericSuperclass();
         Type type = superclass.getActualTypeArguments()[0];
         return (Class)type;
+    }
+
+    public void setObjectClass(Class objectClass) {
+        this.objectClass = objectClass;
     }
 
     @Override
@@ -1357,7 +1362,7 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
         state.performBestGuess = performBestGuess;
         state.preventFreeFormText = preventFreeFormText;
         state.tokenClickStyle = tokenClickStyle;
-        Class parameterizedClass = reifyParameterizedTypeClass();
+        Class parameterizedClass = objectClass;
         //Our core array is Parcelable, so use that interface
         if (Parcelable.class.isAssignableFrom(parameterizedClass)) {
             state.parcelableClassName = parameterizedClass.getName();
@@ -1403,15 +1408,15 @@ public abstract class TokenCompleteTextView<T> extends AppCompatAutoCompleteText
         tokenizer = ss.tokenizer;
         addListeners();
 
-        List<T> objects;
+        List<Object> objects;
         if (SavedState.SERIALIZABLE_PLACEHOLDER.equals(ss.parcelableClassName)) {
             objects = convertSerializableObjectsToTypedObjects(ss.baseObjects);
         } else {
-            objects = (List<T>)ss.baseObjects;
+            objects = (List<Object>)ss.baseObjects;
         }
 
         //TODO: change this to keep object spans in the correct locations based on ranges.
-        for (T obj: objects) {
+        for (Object obj: objects) {
             addObjectSync(obj);
         }
 
